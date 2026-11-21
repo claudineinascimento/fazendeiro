@@ -3,6 +3,7 @@ import { carregar, salvar, apagarSave } from './nucleo/salvamento';
 import { agora } from './nucleo/tempo';
 import * as acoes from './nucleo/acoes';
 import type { Evento, Resultado } from './nucleo/acoes';
+import { registrarEstatisticas, resgatarConquista } from './nucleo/conquistas';
 import { garantirMissoes, registrarEventos, resgatarMissao, resgatarBonus, type ResultadoMissao } from './nucleo/missoes';
 
 // Armazena o estado único do jogo e avisa quem estiver interessado (cena e interface).
@@ -29,7 +30,7 @@ class Jogo {
       this.ouvintesErro.forEach((f) => f(r.erro));
       return false;
     }
-    this.estado = registrarEventos(garantirMissoes(r.estado, agora()), r.eventos);
+    this.estado = registrarEventos(garantirMissoes(registrarEstatisticas(r.estado, r.eventos), agora()), r.eventos);
     this.agendarSave();
     this.ouvintes.forEach((f) => f(this.estado, r.eventos));
     return true;
@@ -62,6 +63,18 @@ class Jogo {
     this.agendarSave();
     const eventos: Evento[] = r.niveis.map((n) => ({ tipo: 'nivel', nivel: n, moedas: 50 * n }));
     this.ouvintes.forEach((f) => f(this.estado, eventos));
+    return true;
+  }
+
+  resgatarConquista(id: string): boolean {
+    const r = resgatarConquista(this.estado, id);
+    if (!r.ok) {
+      this.ouvintesErro.forEach((f) => f(r.erro));
+      return false;
+    }
+    this.estado = r.estado;
+    this.agendarSave();
+    this.ouvintes.forEach((f) => f(this.estado, []));
     return true;
   }
 

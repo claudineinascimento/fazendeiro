@@ -8,6 +8,7 @@ export const T = {
   fechar: 'Fechar',
   semente: 'Semente',
   missoes: 'Missões diárias',
+  conquistas: 'Conquistas',
   resgatar: 'Resgatar',
   bonusDiario: 'Bônus: complete as 3 missões',
   sementes: 'Sementes',
