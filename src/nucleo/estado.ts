@@ -7,6 +7,14 @@ export interface Canteiro {
   plantadoEm: number | null; // ms, hora do jogo (Date.now() + offset do servidor)
 }
 
+// Um animal colocado na fazenda. Produz em ciclo contínuo (timestamp do último ciclo).
+export interface AnimalFazenda {
+  tipo: string;
+  x: number;
+  y: number;
+  cicloDesde: number; // ms: início do ciclo atual
+}
+
 export interface EstadoJogo {
   versao: number;
   moedas: number;
@@ -15,7 +23,8 @@ export interface EstadoJogo {
   nivel: number;
   area: number; // lado da área utilizável (10, 12, 15 ou 20)
   canteiros: Record<string, Canteiro>; // chave "x,y"
-  celeiro: Record<string, number>; // idCultura -> quantidade colhida
+  celeiro: Record<string, number>; // id do item (cultura ou produto) -> quantidade
+  animais: Record<string, AnimalFazenda>; // chave "x,y"
   ultimaCultura: string | null;
   config: { som: boolean };
 }
@@ -51,6 +60,7 @@ export function estadoInicial(agora: number): EstadoJogo {
     area: AREA_INICIAL,
     canteiros,
     celeiro: {},
+    animais: {},
     ultimaCultura: 'rabanete',
     config: { som: true },
   };

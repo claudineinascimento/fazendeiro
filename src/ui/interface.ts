@@ -1,6 +1,6 @@
 import './estilos.css';
-import { CULTURAS } from '../dados';
-import { COR_CULTURA } from '../mundo/texturas';
+import { ANIMAIS, CULTURAS, itemVendavel } from '../dados';
+import { COR_ANIMAL, COR_CULTURA } from '../mundo/texturas';
 import { jogo } from '../jogo';
 import { som } from '../audio';
 import { T } from '../textos/pt-BR';
@@ -71,7 +71,46 @@ export function montarInterface(): void {
   };
 
   // ---- loja ----
+  let aba: 'sementes' | 'animais' = 'sementes';
+  const abas = el('div', 'abas');
+  const bAbaS = el('button', 'botao mini azul', T.sementes);
+  const bAbaA = el('button', 'botao mini cinza', T.animais);
+  abas.append(bAbaS, bAbaA);
+  painelLoja.lista.before(abas);
+  const trocarAba = (nova: 'sementes' | 'animais') => {
+    aba = nova;
+    bAbaS.className = `botao mini ${nova === 'sementes' ? 'azul' : 'cinza'}`;
+    bAbaA.className = `botao mini ${nova === 'animais' ? 'azul' : 'cinza'}`;
+    desenharLoja();
+  };
+  bAbaS.onclick = () => trocarAba('sementes');
+  bAbaA.onclick = () => trocarAba('animais');
+
+  const desenharAnimais = () => {
+    const e = jogo.estado;
+    painelLoja.lista.replaceChildren(
+      ...ANIMAIS.map((a) => {
+        const livre = e.nivel >= a.nivelDesbloqueio;
+        const item = el('div', `item${livre ? '' : ' trava'}`);
+        const bola = el('div', 'bolinha');
+        bola.style.background = `#${(COR_ANIMAL[a.id] ?? 0xffffff).toString(16).padStart(6, '0')}`;
+        const info = el('div', 'info', `<div class="nome">${a.nome}</div><div class="det">${a.produtoNome} a cada ${formatarDuracao(a.tempoProducaoSegundos * 1000)} · vale ${a.vendaProduto} 🪙 · ${a.xpColeta} XP</div>`);
+        const b = el('button', 'botao mini', livre ? `${a.custo} 🪙` : `🔒 ${T.bloqueado(a.nivelDesbloqueio)}`);
+        b.disabled = !livre;
+        b.onclick = () => {
+          som.clique();
+          jogo.colocando = a.id;
+          avisar(T.toqueParaColocar(a.nome));
+          fechar(painelLoja);
+        };
+        item.append(bola, info, b);
+        return item;
+      }),
+    );
+  };
+
   const desenharLoja = () => {
+    if (aba === 'animais') return desenharAnimais();
     const e = jogo.estado;
     painelLoja.lista.replaceChildren(
       ...CULTURAS.map((c) => {
@@ -108,11 +147,11 @@ export function montarInterface(): void {
     }
     painelCeleiro.lista.replaceChildren(
       ...ids.map((id) => {
-        const c = culturaPorId(id)!;
+        const c = itemVendavel(id)!;
         const qtd = e.celeiro[id] ?? 0;
         const item = el('div', 'item');
         const bola = el('div', 'bolinha');
-        bola.style.background = `#${(COR_CULTURA[id] ?? 0xffffff).toString(16).padStart(6, '0')}`;
+        bola.style.background = `#${(COR_CULTURA[id] ?? 0xe8d8a8).toString(16).padStart(6, '0')}`;
         const info = el('div', 'info', `<div class="nome">${c.nome} × ${qtd}</div><div class="det">${c.venda} 🪙 cada · total ${num(qtd * c.venda)} 🪙</div>`);
         const b = el('button', 'botao mini azul', `${T.venderUm} 1`);
         b.onclick = () => jogo.vender(id, 1);

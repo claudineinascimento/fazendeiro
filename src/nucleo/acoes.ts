@@ -1,7 +1,7 @@
-import { CUSTO_ARAR, XP_ARAR, culturaPorId } from '../dados';
+import { CUSTO_ARAR, LIMITE_ANIMAIS, XP_ARAR, animalPorId, culturaPorId, itemVendavel } from '../dados';
 import { chave, dentroDaArea, type EstadoJogo } from './estado';
 import { ganharXp } from './economia';
-import { progresso } from './tempo';
+import { progresso, progressoCiclo } from './tempo';
 
 // Ações puras: recebem o estado e devolvem um estado novo (ou um erro).
 // A interface e as cenas NUNCA alteram o estado diretamente.
@@ -10,6 +10,8 @@ export type Evento =
   | { tipo: 'arou'; x: number; y: number; custo: number; xp: number }
   | { tipo: 'plantou'; x: number; y: number; cultura: string; custo: number }
   | { tipo: 'colheu'; x: number; y: number; cultura: string; xp: number }
+  | { tipo: 'comprouAnimal'; x: number; y: number; animal: string; custo: number }
+  | { tipo: 'coletou'; x: number; y: number; produto: string; xp: number }
   | { tipo: 'vendeu'; moedas: number }
   | { tipo: 'nivel'; nivel: number; moedas: number };
 
@@ -27,6 +29,7 @@ function concluir(estado: EstadoJogo, eventos: Evento[], xp: number): Resultado 
 
 export function arar(antigo: EstadoJogo, x: number, y: number): Resultado {
   if (!dentroDaArea(antigo, x, y)) return erro('Esse terreno ainda está bloqueado.');
+  if (antigo.animais[chave(x, y)]) return erro('Tem um animal aqui.');
   if (antigo.canteiros[chave(x, y)]) return erro('Esse canteiro já está arado.');
   if (antigo.moedas < CUSTO_ARAR) return erro('Moedas insuficientes para arar.');
   const estado = structuredClone(antigo);
@@ -64,12 +67,12 @@ export function colher(antigo: EstadoJogo, x: number, y: number, agoraMs: number
 
 /** Vende `quantidade` unidades de uma cultura (ou tudo, se omitida). */
 export function vender(antigo: EstadoJogo, culturaId: string, quantidade?: number): Resultado {
-  const cultura = culturaPorId(culturaId);
+  const item = itemVendavel(culturaId);
   const tem = antigo.celeiro[culturaId] ?? 0;
-  if (!cultura || tem <= 0) return erro('Não há nada para vender.');
+  if (!item || tem <= 0) return erro('Não há nada para vender.');
   const qtd = Math.min(quantidade ?? tem, tem);
   const estado = structuredClone(antigo);
-  const total = qtd * cultura.venda;
+  const total = qtd * item.venda;
   estado.celeiro[culturaId] = tem - qtd;
   if (estado.celeiro[culturaId] === 0) delete estado.celeiro[culturaId];
   estado.moedas += total;
@@ -91,8 +94,35 @@ export function venderTudo(antigo: EstadoJogo): Resultado {
   return { ok: true, estado, eventos: [{ tipo: 'vendeu', moedas }] };
 }
 
+export function comprarAnimal(antigo: EstadoJogo, x: number, y: number, tipo: string, agoraMs: number): Resultado {
+  const animal = animalPorId(tipo);
+  if (!animal) return erro('Animal desconhecido.');
+  if (!dentroDaArea(antigo, x, y)) return erro('Esse terreno ainda está bloqueado.');
+  if (antigo.canteiros[chave(x, y)] || antigo.animais[chave(x, y)]) return erro('Esse espaço está ocupado.');
+  if (antigo.nivel < animal.nivelDesbloqueio) return erro(`Disponível no nível ${animal.nivelDesbloqueio}.`);
+  if (Object.keys(antigo.animais).length >= LIMITE_ANIMAIS) return erro(`Limite de ${LIMITE_ANIMAIS} animais.`);
+  if (antigo.moedas < animal.custo) return erro('Moedas insuficientes.');
+  const estado = structuredClone(antigo);
+  estado.moedas -= animal.custo;
+  estado.animais[chave(x, y)] = { tipo, x, y, cicloDesde: agoraMs };
+  return { ok: true, estado, eventos: [{ tipo: 'comprouAnimal', x, y, animal: tipo, custo: animal.custo }] };
+}
+
+/** Coleta o produto de um animal pronto e reinicia o ciclo (sem ração, GDD D3). */
+export function coletar(antigo: EstadoJogo, x: number, y: number, agoraMs: number): Resultado {
+  const a = antigo.animais[chave(x, y)];
+  const animal = a && animalPorId(a.tipo);
+  if (!a || !animal) return erro('Não há animal aqui.');
+  if (progressoCiclo(a.cicloDesde, animal.tempoProducaoSegundos, agoraMs) < 1) return erro('Ainda está produzindo.');
+  const estado = structuredClone(antigo);
+  estado.animais[chave(x, y)] = { ...a, cicloDesde: agoraMs };
+  estado.celeiro[animal.produtoId] = (estado.celeiro[animal.produtoId] ?? 0) + 1;
+  return concluir(estado, [{ tipo: 'coletou', x, y, produto: animal.produtoId, xp: animal.xpColeta }], animal.xpColeta);
+}
+
 /** Ferramenta inteligente (GDD seção 2): arar se vazio, plantar se arado, colher se pronto. */
 export function tocar(estado: EstadoJogo, x: number, y: number, agoraMs: number): Resultado {
+  if (estado.animais[chave(x, y)]) return coletar(estado, x, y, agoraMs);
   const c = estado.canteiros[chave(x, y)];
   if (!c) return arar(estado, x, y);
   if (!c.cultura) {
