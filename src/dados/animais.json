@@ -1,0 +1,61 @@
+{
+  "versao": 1,
+  "limiteAnimaisTotal": 20,
+  "animais": [
+    {
+      "id": "galinha",
+      "nome": "Galinha",
+      "produtoId": "ovo",
+      "produtoNome": "Ovo",
+      "nivelDesbloqueio": 3,
+      "custo": 150,
+      "tempoProducaoSegundos": 1800,
+      "vendaProduto": 15,
+      "xpColeta": 2
+    },
+    {
+      "id": "vaca",
+      "nome": "Vaca",
+      "produtoId": "leite",
+      "produtoNome": "Leite",
+      "nivelDesbloqueio": 6,
+      "custo": 600,
+      "tempoProducaoSegundos": 14400,
+      "vendaProduto": 60,
+      "xpColeta": 6
+    },
+    {
+      "id": "ovelha",
+      "nome": "Ovelha",
+      "produtoId": "la",
+      "produtoNome": "Lã",
+      "nivelDesbloqueio": 9,
+      "custo": 900,
+      "tempoProducaoSegundos": 28800,
+      "vendaProduto": 100,
+      "xpColeta": 9
+    },
+    {
+      "id": "porco",
+      "nome": "Porco",
+      "produtoId": "trufa",
+      "produtoNome": "Trufa",
+      "nivelDesbloqueio": 12,
+      "custo": 1200,
+      "tempoProducaoSegundos": 43200,
+      "vendaProduto": 150,
+      "xpColeta": 12
+    },
+    {
+      "id": "cabra",
+      "nome": "Cabra",
+      "produtoId": "queijo",
+      "produtoNome": "Queijo de cabra",
+      "nivelDesbloqueio": 15,
+      "custo": 1500,
+      "tempoProducaoSegundos": 86400,
+      "vendaProduto": 260,
+      "xpColeta": 18
+    }
+  ]
+}
