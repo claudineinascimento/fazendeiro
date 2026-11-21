@@ -3,6 +3,7 @@ import { carregar, salvar, apagarSave } from './nucleo/salvamento';
 import { agora } from './nucleo/tempo';
 import * as acoes from './nucleo/acoes';
 import type { Evento, Resultado } from './nucleo/acoes';
+import { garantirMissoes, registrarEventos, resgatarMissao, resgatarBonus, type ResultadoMissao } from './nucleo/missoes';
 
 // Armazena o estado único do jogo e avisa quem estiver interessado (cena e interface).
 type Ouvinte = (estado: EstadoJogo, eventos: Evento[]) => void;
@@ -28,7 +29,7 @@ class Jogo {
       this.ouvintesErro.forEach((f) => f(r.erro));
       return false;
     }
-    this.estado = r.estado;
+    this.estado = registrarEventos(garantirMissoes(r.estado, agora()), r.eventos);
     this.agendarSave();
     this.ouvintes.forEach((f) => f(this.estado, r.eventos));
     return true;
@@ -48,6 +49,21 @@ class Jogo {
   };
   vender = (id: string, qtd?: number) => this.executar((e) => acoes.vender(e, id, qtd));
   venderTudo = () => this.executar((e) => acoes.venderTudo(e));
+
+  /** Resgata a recompensa de uma missão (ou o bônus diário se indice for -1). */
+  resgatar(indice: number): boolean {
+    this.estado = garantirMissoes(this.estado, agora());
+    const r: ResultadoMissao = indice < 0 ? resgatarBonus(this.estado) : resgatarMissao(this.estado, indice);
+    if (!r.ok) {
+      this.ouvintesErro.forEach((f) => f(r.erro));
+      return false;
+    }
+    this.estado = r.estado;
+    this.agendarSave();
+    const eventos: Evento[] = r.niveis.map((n) => ({ tipo: 'nivel', nivel: n, moedas: 50 * n }));
+    this.ouvintes.forEach((f) => f(this.estado, eventos));
+    return true;
+  }
 
   escolherSemente(id: string): void {
     this.estado = { ...this.estado, ultimaCultura: id };
@@ -83,6 +99,7 @@ class Jogo {
 }
 
 export const jogo = new Jogo();
+jogo.estado = garantirMissoes(jogo.estado, agora());
 
 // Garante o save ao fechar a aba ou trocar de app no celular.
 document.addEventListener('visibilitychange', () => {

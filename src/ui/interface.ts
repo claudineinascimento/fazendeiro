@@ -7,6 +7,7 @@ import { T } from '../textos/pt-BR';
 import { xpAcumuladoNivel, NIVEL_MAXIMO } from '../nucleo/economia';
 import { formatarDuracao } from '../nucleo/tempo';
 import { culturaPorId } from '../dados';
+import { textoMissao, BONUS_DIARIO } from '../nucleo/missoes';
 
 // Camada DOM por cima do canvas: HUD, loja de sementes e celeiro (inventário/venda).
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, classe = '', html = ''): HTMLElementTagNameMap[K] => {
@@ -32,13 +33,16 @@ export function montarInterface(): void {
   const bSemente = el('button', 'semente');
   const bLoja = el('button', 'botao', `🌱 ${T.loja}`);
   const bCeleiro = el('button', 'botao azul', `🏠 ${T.celeiro}`);
+  const bMissoes = el('button', 'botao mini', '📋');
+  bMissoes.title = T.missoes;
   const bSom = el('button', 'botao cinza mini');
-  rodape.append(bSemente, bLoja, bCeleiro, bSom);
+  rodape.append(bSemente, bLoja, bCeleiro, bMissoes, bSom);
 
   const toast = el('div', 'toast');
   const painelLoja = criarPainel(`🌱 ${T.loja}`);
   const painelCeleiro = criarPainel(`🏠 ${T.celeiro}`);
-  raiz.append(topo, rodape, toast, painelLoja.fundo, painelCeleiro.fundo);
+  const painelMissoes = criarPainel(`📋 ${T.missoes}`);
+  raiz.append(topo, rodape, toast, painelLoja.fundo, painelCeleiro.fundo, painelMissoes.fundo);
 
   // ---- toast ----
   let timerToast = 0;
@@ -68,6 +72,8 @@ export function montarInterface(): void {
     bSom.title = e.config.som ? T.somLigado : T.somDesligado;
     if (painelLoja.fundo.classList.contains('aberto')) desenharLoja();
     if (painelCeleiro.fundo.classList.contains('aberto')) desenharCeleiro();
+    if (painelMissoes.fundo.classList.contains('aberto')) desenharMissoes();
+    bMissoes.classList.toggle('alerta', (e.missoes?.lista ?? []).some((m) => m.progresso >= m.alvo && !m.resgatada));
   };
 
   // ---- loja ----
@@ -161,6 +167,32 @@ export function montarInterface(): void {
     );
   };
 
+  // ---- missões diárias ----
+  const desenharMissoes = () => {
+    const ms = jogo.estado.missoes;
+    const itens = (ms?.lista ?? []).map((m, i) => {
+      const pronta = m.progresso >= m.alvo;
+      const item = el('div', `item${m.resgatada ? ' trava' : pronta ? ' ativo' : ''}`);
+      const info = el('div', 'info', `<div class="nome">${textoMissao(m)}</div><div class="det">${num(m.progresso)}/${num(m.alvo)} · ${m.moedas} 🪙 + ${m.xp} XP</div><div class="barra"><i style="width:${Math.min(100, (m.progresso / m.alvo) * 100)}%"></i></div>`);
+      const b = el('button', 'botao mini', m.resgatada ? '✔' : T.resgatar);
+      b.disabled = m.resgatada || !pronta;
+      b.onclick = () => {
+        if (jogo.resgatar(i)) som.moeda();
+      };
+      item.append(info, b);
+      return item;
+    });
+    const todas = !!ms && ms.lista.length > 0 && ms.lista.every((m) => m.resgatada);
+    const bonus = el('div', `item${todas && !ms.bonusResgatado ? ' ativo' : ' trava'}`);
+    const bb = el('button', 'botao mini', ms?.bonusResgatado ? '✔' : T.resgatar);
+    bb.disabled = !todas || !!ms?.bonusResgatado;
+    bb.onclick = () => {
+      if (jogo.resgatar(-1)) som.nivel();
+    };
+    bonus.append(el('div', 'info', `<div class="nome">${T.bonusDiario}</div><div class="det">${BONUS_DIARIO.moedas} 🪙 + ${BONUS_DIARIO.diamantes} 💎</div>`), bb);
+    painelMissoes.lista.replaceChildren(...itens, bonus);
+  };
+
   // ---- abrir e fechar ----
   const abrir = (p: ReturnType<typeof criarPainel>, desenhar: () => void) => {
     som.clique();
@@ -170,11 +202,13 @@ export function montarInterface(): void {
   const fechar = (p: ReturnType<typeof criarPainel>) => p.fundo.classList.remove('aberto');
   painelLoja.fechar.onclick = () => fechar(painelLoja);
   painelCeleiro.fechar.onclick = () => fechar(painelCeleiro);
-  for (const p of [painelLoja, painelCeleiro]) p.fundo.addEventListener('pointerdown', (ev) => ev.target === p.fundo && fechar(p));
+  painelMissoes.fechar.onclick = () => fechar(painelMissoes);
+  for (const p of [painelLoja, painelCeleiro, painelMissoes]) p.fundo.addEventListener('pointerdown', (ev) => ev.target === p.fundo && fechar(p));
 
   bLoja.onclick = () => abrir(painelLoja, desenharLoja);
   bSemente.onclick = bLoja.onclick;
   bCeleiro.onclick = () => abrir(painelCeleiro, desenharCeleiro);
+  bMissoes.onclick = () => abrir(painelMissoes, desenharMissoes);
   bSom.onclick = () => {
     jogo.alternarSom();
     som.clique();

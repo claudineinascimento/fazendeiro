@@ -1,3 +1,4 @@
+import type { EstadoMissoes } from './missoes';
 import { AREA_INICIAL, MAPA, VERSAO_SAVE } from '../config';
 import { culturaPorId } from '../dados';
 
@@ -25,6 +26,7 @@ export interface EstadoJogo {
   canteiros: Record<string, Canteiro>; // chave "x,y"
   celeiro: Record<string, number>; // id do item (cultura ou produto) -> quantidade
   animais: Record<string, AnimalFazenda>; // chave "x,y"
+  missoes?: EstadoMissoes; // sorteadas ao abrir o jogo, a cada dia
   ultimaCultura: string | null;
   config: { som: boolean };
 }
