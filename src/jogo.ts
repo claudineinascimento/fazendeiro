@@ -34,7 +34,18 @@ class Jogo {
     return true;
   }
 
-  tocar = (x: number, y: number) => this.executar((e, t) => acoes.tocar(e, x, y, t));
+  /** Animal escolhido na loja, aguardando o toque no terreno (só interface, não é salvo). */
+  colocando: string | null = null;
+
+  tocar = (x: number, y: number): boolean => {
+    if (this.colocando) {
+      const tipo = this.colocando;
+      const ok = this.executar((e, t) => acoes.comprarAnimal(e, x, y, tipo, t));
+      if (ok) this.colocando = null;
+      return ok;
+    }
+    return this.executar((e, t) => acoes.tocar(e, x, y, t));
+  };
   vender = (id: string, qtd?: number) => this.executar((e) => acoes.vender(e, id, qtd));
   venderTudo = () => this.executar((e) => acoes.venderTudo(e));
 

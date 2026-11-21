@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import { LIMITE_TOQUE_MS, LIMITE_TOQUE_PX, MAPA, TILE_A, TILE_L, ZOOM_MAX, ZOOM_MIN } from '../config';
-import { culturaPorId } from '../dados';
+import { animalPorId, culturaPorId, itemVendavel } from '../dados';
 import { jogo } from '../jogo';
 import { chave, dentroDaArea, type EstadoJogo } from '../nucleo/estado';
 import type { Evento } from '../nucleo/acoes';
-import { agora, estagio, progresso } from '../nucleo/tempo';
+import { agora, estagio, progresso, progressoCiclo } from '../nucleo/tempo';
 import { som } from '../audio';
 import { gerarTexturas } from './texturas';
 import { isoParaTela, profundidade, telaParaGrade } from './isometrico';
@@ -15,6 +15,7 @@ export class CenaFazenda extends Phaser.Scene {
   private chao = new Map<string, Phaser.GameObjects.Image>();
   private plantas = new Map<string, Phaser.GameObjects.Image>();
   private pulsos = new Map<string, Phaser.Tweens.Tween>();
+  private bichos = new Map<string, { corpo: Phaser.GameObjects.Image; bolha: Phaser.GameObjects.Image }>();
 
   // estado dos gestos
   private inicioX = 0;
@@ -79,11 +80,26 @@ export class CenaFazenda extends Phaser.Scene {
         this.plantas.delete(k);
       }
     }
+    // animais: cria os novos
+    for (const [k, a] of Object.entries(estado.animais)) {
+      if (this.bichos.has(k)) continue;
+      const p = isoParaTela(a.x, a.y);
+      const corpo = this.add.image(p.x, p.y, `animal_${a.tipo}`).setOrigin(0.5, 0.75).setDepth(profundidade(a.x, a.y, 1));
+      const bolha = this.add.image(p.x, p.y - 100, 'bolha').setDepth(profundidade(a.x, a.y, 2)).setVisible(false);
+      this.tweens.add({ targets: bolha, y: bolha.y - 8, yoyo: true, repeat: -1, duration: 500, ease: 'Sine.easeInOut' });
+      this.bichos.set(k, { corpo, bolha });
+    }
     this.atualizarEstagios();
   }
 
   private atualizarEstagios(): void {
     const t = agora();
+    // bolha de "produto pronto" sobre os animais
+    for (const [k, a] of Object.entries(jogo.estado.animais)) {
+      const animal = animalPorId(a.tipo);
+      const b = this.bichos.get(k);
+      if (animal && b) b.bolha.setVisible(progressoCiclo(a.cicloDesde, animal.tempoProducaoSegundos, t) >= 1);
+    }
     for (const [k, c] of Object.entries(jogo.estado.canteiros)) {
       if (!c.cultura) continue;
       const cultura = culturaPorId(c.cultura);
@@ -128,6 +144,14 @@ export class CenaFazenda extends Phaser.Scene {
       case 'plantou':
         texto(e.x, e.y, `-${e.custo} 🪙`, '#f7c531');
         som.plantar();
+        break;
+      case 'comprouAnimal':
+        texto(e.x, e.y, `-${e.custo} 🪙`, '#f7c531');
+        som.plantar();
+        break;
+      case 'coletou':
+        texto(e.x, e.y, `+1 ${itemVendavel(e.produto)?.nome ?? ''}  +${e.xp} XP`, '#ffffff');
+        som.colher();
         break;
       case 'colheu':
         texto(e.x, e.y, `+1 ${culturaPorId(e.cultura)?.nome ?? ''}  +${e.xp} XP`, '#ffffff');

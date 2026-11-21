@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { TILE_A, TILE_L } from '../config';
-import { CULTURAS } from '../dados';
+import { ANIMAIS, CULTURAS } from '../dados';
 
 // Arte PLACEHOLDER gerada por código (sem arquivos). O Artista 2D substitui por atlas
 // real mantendo as mesmas chaves de textura e o canvas de 128×128 com âncora (0.5, 0.75).
@@ -53,6 +53,14 @@ export function gerarTexturas(cena: Phaser.Scene): void {
   });
   gerar(cena, 'seta', 24, 24, (g) => g.fillStyle(0xffffff, 1).fillCircle(12, 12, 10));
 
+  for (const a of ANIMAIS) {
+    gerar(cena, `animal_${a.id}`, TILE_L, TILE_L, (g) => desenharAnimal(g, COR_ANIMAL[a.id] ?? 0xffffff));
+  }
+  gerar(cena, 'bolha', 56, 56, (g) => {
+    g.fillStyle(0xffffff, 1).fillCircle(28, 28, 24).lineStyle(4, CONTORNO, 1).strokeCircle(28, 28, 24);
+    g.fillStyle(0xf7c531, 1).fillCircle(28, 28, 12);
+  });
+
   for (const c of CULTURAS) {
     const cor = COR_CULTURA[c.id] ?? 0xffffff;
     for (let estagio = 0; estagio <= 3; estagio++) {
@@ -87,4 +95,24 @@ function desenharCultura(g: Phaser.GameObjects.Graphics, cor: number, estagio: n
       g.strokeCircle(cx + dx, cy - alturas - 4 + (dx === 0 ? -6 : 4), 9);
     }
   }
+}
+
+export const COR_ANIMAL: Record<string, number> = {
+  galinha: 0xffffff,
+  vaca: 0xf1e7d6,
+  ovelha: 0xe8e8f0,
+  porco: 0xf4a6b8,
+  cabra: 0xc9b79c,
+};
+
+// Animal placeholder: corpo oval, cabeça e olho.
+function desenharAnimal(g: Phaser.GameObjects.Graphics, cor: number): void {
+  const cx = 64;
+  const cy = 96;
+  g.fillStyle(0x000000, 0.2).fillEllipse(cx, cy + 2, 50, 18);
+  g.fillStyle(cor, 1).lineStyle(3, CONTORNO, 1);
+  g.fillEllipse(cx, cy - 18, 46, 34).strokeEllipse(cx, cy - 18, 46, 34);
+  g.fillCircle(cx + 18, cy - 36, 13).strokeCircle(cx + 18, cy - 36, 13);
+  g.fillStyle(CONTORNO, 1).fillCircle(cx + 22, cy - 38, 2.5);
+  g.fillStyle(0xf59a23, 1).fillTriangle(cx + 30, cy - 36, cx + 38, cy - 33, cx + 30, cy - 30);
 }

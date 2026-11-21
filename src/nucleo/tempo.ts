@@ -38,3 +38,8 @@ export function formatarDuracao(ms: number): string {
   if (m > 0) return `${m}min ${String(seg).padStart(2, '0')}s`;
   return `${seg}s`;
 }
+
+/** Fração do ciclo de produção de um animal (0 a 1). */
+export function progressoCiclo(cicloDesde: number, tempoSegundos: number, agoraMs: number): number {
+  return Math.min(1, Math.max(0, (agoraMs - cicloDesde) / (tempoSegundos * 1000)));
+}

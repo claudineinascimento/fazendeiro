@@ -34,6 +34,7 @@ export function apagarSave(): void {
 
 /** Migrações por versão do formato. Hoje só existe a versão 1. */
 export function migrar(estado: EstadoJogo): EstadoJogo {
+  estado.animais ??= {}; // saves da Fase 2 não tinham animais
   estado.versao = VERSAO_SAVE;
   return estado;
 }
