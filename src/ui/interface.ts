@@ -7,6 +7,8 @@ import { T } from '../textos/pt-BR';
 import { xpAcumuladoNivel, NIVEL_MAXIMO } from '../nucleo/economia';
 import { formatarDuracao } from '../nucleo/tempo';
 import { culturaPorId } from '../dados';
+import { CONQUISTAS, NOME_GRAU, RECOMPENSA_GRAU, grauAtingido, temConquistaPendente } from '../nucleo/conquistas';
+import { textoMissao, BONUS_DIARIO } from '../nucleo/missoes';
 
 // Camada DOM por cima do canvas: HUD, loja de sementes e celeiro (inventário/venda).
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, classe = '', html = ''): HTMLElementTagNameMap[K] => {
@@ -32,13 +34,19 @@ export function montarInterface(): void {
   const bSemente = el('button', 'semente');
   const bLoja = el('button', 'botao', `🌱 ${T.loja}`);
   const bCeleiro = el('button', 'botao azul', `🏠 ${T.celeiro}`);
+  const bMissoes = el('button', 'botao mini', '📋');
+  bMissoes.title = T.missoes;
+  const bConq = el('button', 'botao mini', '🏆');
+  bConq.title = T.conquistas;
   const bSom = el('button', 'botao cinza mini');
-  rodape.append(bSemente, bLoja, bCeleiro, bSom);
+  rodape.append(bSemente, bLoja, bCeleiro, bMissoes, bConq, bSom);
 
   const toast = el('div', 'toast');
   const painelLoja = criarPainel(`🌱 ${T.loja}`);
   const painelCeleiro = criarPainel(`🏠 ${T.celeiro}`);
-  raiz.append(topo, rodape, toast, painelLoja.fundo, painelCeleiro.fundo);
+  const painelMissoes = criarPainel(`📋 ${T.missoes}`);
+  const painelConq = criarPainel(`🏆 ${T.conquistas}`);
+  raiz.append(topo, rodape, toast, painelLoja.fundo, painelCeleiro.fundo, painelMissoes.fundo, painelConq.fundo);
 
   // ---- toast ----
   let timerToast = 0;
@@ -68,6 +76,10 @@ export function montarInterface(): void {
     bSom.title = e.config.som ? T.somLigado : T.somDesligado;
     if (painelLoja.fundo.classList.contains('aberto')) desenharLoja();
     if (painelCeleiro.fundo.classList.contains('aberto')) desenharCeleiro();
+    if (painelMissoes.fundo.classList.contains('aberto')) desenharMissoes();
+    if (painelConq.fundo.classList.contains('aberto')) desenharConquistas();
+    bConq.classList.toggle('alerta', temConquistaPendente(e));
+    bMissoes.classList.toggle('alerta', (e.missoes?.lista ?? []).some((m) => m.progresso >= m.alvo && !m.resgatada));
   };
 
   // ---- loja ----
@@ -161,6 +173,58 @@ export function montarInterface(): void {
     );
   };
 
+  // ---- missões diárias ----
+  const desenharMissoes = () => {
+    const ms = jogo.estado.missoes;
+    const itens = (ms?.lista ?? []).map((m, i) => {
+      const pronta = m.progresso >= m.alvo;
+      const item = el('div', `item${m.resgatada ? ' trava' : pronta ? ' ativo' : ''}`);
+      const info = el('div', 'info', `<div class="nome">${textoMissao(m)}</div><div class="det">${num(m.progresso)}/${num(m.alvo)} · ${m.moedas} 🪙 + ${m.xp} XP</div><div class="barra"><i style="width:${Math.min(100, (m.progresso / m.alvo) * 100)}%"></i></div>`);
+      const b = el('button', 'botao mini', m.resgatada ? '✔' : T.resgatar);
+      b.disabled = m.resgatada || !pronta;
+      b.onclick = () => {
+        if (jogo.resgatar(i)) som.moeda();
+      };
+      item.append(info, b);
+      return item;
+    });
+    const todas = !!ms && ms.lista.length > 0 && ms.lista.every((m) => m.resgatada);
+    const bonus = el('div', `item${todas && !ms.bonusResgatado ? ' ativo' : ' trava'}`);
+    const bb = el('button', 'botao mini', ms?.bonusResgatado ? '✔' : T.resgatar);
+    bb.disabled = !todas || !!ms?.bonusResgatado;
+    bb.onclick = () => {
+      if (jogo.resgatar(-1)) som.nivel();
+    };
+    bonus.append(el('div', 'info', `<div class="nome">${T.bonusDiario}</div><div class="det">${BONUS_DIARIO.moedas} 🪙 + ${BONUS_DIARIO.diamantes} 💎</div>`), bb);
+    painelMissoes.lista.replaceChildren(...itens, bonus);
+  };
+
+  // ---- conquistas ----
+  const desenharConquistas = () => {
+    const e = jogo.estado;
+    painelConq.lista.replaceChildren(
+      ...CONQUISTAS.map((c) => {
+        const feito = e.conquistas?.[c.id] ?? 0;
+        const atingido = grauAtingido(c, e);
+        const proxima = c.metas[Math.min(feito, 2)]!;
+        const valor = Math.min(c.valor(e), c.metas[2]);
+        const pendente = atingido > feito;
+        const item = el('div', `item${pendente ? ' ativo' : feito === 3 ? ' trava' : ''}`);
+        const grau = feito === 0 ? 'Sem medalha' : NOME_GRAU[feito - 1]!;
+        const alvo = feito >= 3 ? c.metas[2] : proxima;
+        const info = el('div', 'info', `<div class="nome">${c.nome} · ${grau}</div><div class="det">${c.descricao}: ${num(valor)}/${num(alvo)}</div><div class="barra"><i style="width:${Math.min(100, (valor / alvo) * 100)}%"></i></div>`);
+        const r = RECOMPENSA_GRAU[Math.min(feito, 2)]!;
+        const b = el('button', 'botao mini', feito >= 3 ? '✔' : pendente ? `${T.resgatar} ${r.diamantes}💎` : `${r.diamantes}💎`);
+        b.disabled = !pendente;
+        b.onclick = () => {
+          if (jogo.resgatarConquista(c.id)) som.nivel();
+        };
+        item.append(info, b);
+        return item;
+      }),
+    );
+  };
+
   // ---- abrir e fechar ----
   const abrir = (p: ReturnType<typeof criarPainel>, desenhar: () => void) => {
     som.clique();
@@ -170,11 +234,15 @@ export function montarInterface(): void {
   const fechar = (p: ReturnType<typeof criarPainel>) => p.fundo.classList.remove('aberto');
   painelLoja.fechar.onclick = () => fechar(painelLoja);
   painelCeleiro.fechar.onclick = () => fechar(painelCeleiro);
-  for (const p of [painelLoja, painelCeleiro]) p.fundo.addEventListener('pointerdown', (ev) => ev.target === p.fundo && fechar(p));
+  painelMissoes.fechar.onclick = () => fechar(painelMissoes);
+  painelConq.fechar.onclick = () => fechar(painelConq);
+  for (const p of [painelLoja, painelCeleiro, painelMissoes, painelConq]) p.fundo.addEventListener('pointerdown', (ev) => ev.target === p.fundo && fechar(p));
 
   bLoja.onclick = () => abrir(painelLoja, desenharLoja);
   bSemente.onclick = bLoja.onclick;
   bCeleiro.onclick = () => abrir(painelCeleiro, desenharCeleiro);
+  bConq.onclick = () => abrir(painelConq, desenharConquistas);
+  bMissoes.onclick = () => abrir(painelMissoes, desenharMissoes);
   bSom.onclick = () => {
     jogo.alternarSom();
     som.clique();

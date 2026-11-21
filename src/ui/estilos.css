@@ -60,3 +60,4 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #bfe7f7; tou
 .toast.visivel { opacity: 1; }
 .toast.nivel { background: var(--roxo); font-size: 18px; }
 .abas { display: flex; gap: 8px; padding: 10px 10px 0; }
+.botao.alerta { box-shadow: 0 4px 0 var(--verde-s), 0 0 0 4px var(--ouro); }
