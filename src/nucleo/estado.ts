@@ -27,6 +27,8 @@ export interface EstadoJogo {
   canteiros: Record<string, Canteiro>; // chave "x,y"
   celeiro: Record<string, number>; // id do item (cultura ou produto) -> quantidade
   animais: Record<string, AnimalFazenda>; // chave "x,y"
+  decoracoes?: Record<string, string>; // chave "x,y" -> id da decoração colocada
+  guardadas?: Record<string, number>; // decorações no inventário (id -> quantidade)
   estatisticas?: Estatisticas; // contadores das conquistas
   conquistas?: Record<string, number>; // id -> grau já resgatado (0 a 3)
   missoes?: EstadoMissoes; // sorteadas ao abrir o jogo, a cada dia
@@ -40,6 +42,12 @@ export const chave = (x: number, y: number): string => `${x},${y}`;
 export function limitesArea(area: number): { min: number; max: number } {
   const min = Math.floor((MAPA - area) / 2);
   return { min, max: min + area - 1 };
+}
+
+/** Um tile está ocupado por canteiro, animal ou decoração. */
+export function ocupado(estado: EstadoJogo, x: number, y: number): boolean {
+  const k = chave(x, y);
+  return !!(estado.canteiros[k] || estado.animais[k] || estado.decoracoes?.[k]);
 }
 
 export function dentroDaArea(estado: EstadoJogo, x: number, y: number): boolean {

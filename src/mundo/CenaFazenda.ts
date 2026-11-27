@@ -15,6 +15,7 @@ export class CenaFazenda extends Phaser.Scene {
   private chao = new Map<string, Phaser.GameObjects.Image>();
   private plantas = new Map<string, Phaser.GameObjects.Image>();
   private pulsos = new Map<string, Phaser.Tweens.Tween>();
+  private decos = new Map<string, Phaser.GameObjects.Image>();
   private bichos = new Map<string, { corpo: Phaser.GameObjects.Image; bolha: Phaser.GameObjects.Image }>();
 
   // estado dos gestos
@@ -80,6 +81,19 @@ export class CenaFazenda extends Phaser.Scene {
         this.plantas.delete(k);
       }
     }
+    // decorações: cria as novas e remove as guardadas
+    for (const [k, img] of this.decos) {
+      if (!estado.decoracoes?.[k]) {
+        img.destroy();
+        this.decos.delete(k);
+      }
+    }
+    for (const [k, id] of Object.entries(estado.decoracoes ?? {})) {
+      if (this.decos.has(k)) continue;
+      const [x, y] = k.split(',').map(Number) as [number, number];
+      const p = isoParaTela(x, y);
+      this.decos.set(k, this.add.image(p.x, p.y, `deco_${id}`).setOrigin(0.5, 0.75).setDepth(profundidade(x, y, 1)));
+    }
     // animais: cria os novos
     for (const [k, a] of Object.entries(estado.animais)) {
       if (this.bichos.has(k)) continue;
@@ -144,6 +158,13 @@ export class CenaFazenda extends Phaser.Scene {
       case 'plantou':
         texto(e.x, e.y, `-${e.custo} 🪙`, '#f7c531');
         som.plantar();
+        break;
+      case 'colocouDecoracao':
+        if (e.xp) texto(e.x, e.y, `+${e.xp} XP`, '#ffffff');
+        som.plantar();
+        break;
+      case 'guardouDecoracao':
+        som.clique();
         break;
       case 'comprouAnimal':
         texto(e.x, e.y, `-${e.custo} 🪙`, '#f7c531');

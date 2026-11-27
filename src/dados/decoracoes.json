@@ -1,0 +1,16 @@
+{
+  "versao": 1,
+  "observacao": "Valores do GDD seção 6. moeda: 'moedas' ou 'diamantes'. No MVP todas ocupam 1 tile (o 2x2 de moinho, coreto e balão fica para a arte final).",
+  "decoracoes": [
+    { "id": "cerca", "nome": "Cerca de madeira", "preco": 10, "moeda": "moedas", "nivel": 1 },
+    { "id": "flores", "nome": "Canteiro de flores", "preco": 40, "moeda": "moedas", "nivel": 2 },
+    { "id": "caminho", "nome": "Caminho de pedra", "preco": 15, "moeda": "moedas", "nivel": 3 },
+    { "id": "espantalho", "nome": "Espantalho", "preco": 120, "moeda": "moedas", "nivel": 4 },
+    { "id": "banco", "nome": "Banco de praça", "preco": 200, "moeda": "moedas", "nivel": 6 },
+    { "id": "poco", "nome": "Poço", "preco": 500, "moeda": "moedas", "nivel": 8 },
+    { "id": "moinho", "nome": "Moinho decorativo", "preco": 1500, "moeda": "moedas", "nivel": 12 },
+    { "id": "fonte", "nome": "Fonte", "preco": 3, "moeda": "diamantes", "nivel": 1 },
+    { "id": "coreto", "nome": "Coreto colorido", "preco": 8, "moeda": "diamantes", "nivel": 5 },
+    { "id": "balao", "nome": "Balão de ar quente", "preco": 15, "moeda": "diamantes", "nivel": 10 }
+  ]
+}

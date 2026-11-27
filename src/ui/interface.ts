@@ -1,6 +1,6 @@
 import './estilos.css';
-import { ANIMAIS, CULTURAS, itemVendavel } from '../dados';
-import { COR_ANIMAL, COR_CULTURA } from '../mundo/texturas';
+import { ANIMAIS, CULTURAS, DECORACOES, itemVendavel } from '../dados';
+import { COR_ANIMAL, COR_CULTURA, COR_DECORACAO } from '../mundo/texturas';
 import { jogo } from '../jogo';
 import { som } from '../audio';
 import { T } from '../textos/pt-BR';
@@ -38,8 +38,10 @@ export function montarInterface(): void {
   bMissoes.title = T.missoes;
   const bConq = el('button', 'botao mini', '🏆');
   bConq.title = T.conquistas;
+  const bGuardar = el('button', 'botao cinza mini', '🧹');
+  bGuardar.title = T.guardar;
   const bSom = el('button', 'botao cinza mini');
-  rodape.append(bSemente, bLoja, bCeleiro, bMissoes, bConq, bSom);
+  rodape.append(bSemente, bLoja, bCeleiro, bMissoes, bConq, bGuardar, bSom);
 
   const toast = el('div', 'toast');
   const painelLoja = criarPainel(`🌱 ${T.loja}`);
@@ -83,20 +85,49 @@ export function montarInterface(): void {
   };
 
   // ---- loja ----
-  let aba: 'sementes' | 'animais' = 'sementes';
+  let aba: 'sementes' | 'animais' | 'decoracao' = 'sementes';
   const abas = el('div', 'abas');
   const bAbaS = el('button', 'botao mini azul', T.sementes);
   const bAbaA = el('button', 'botao mini cinza', T.animais);
-  abas.append(bAbaS, bAbaA);
+  const bAbaD = el('button', 'botao mini cinza', T.decoracoes);
+  abas.append(bAbaS, bAbaA, bAbaD);
   painelLoja.lista.before(abas);
-  const trocarAba = (nova: 'sementes' | 'animais') => {
+  const trocarAba = (nova: 'sementes' | 'animais' | 'decoracao') => {
     aba = nova;
     bAbaS.className = `botao mini ${nova === 'sementes' ? 'azul' : 'cinza'}`;
     bAbaA.className = `botao mini ${nova === 'animais' ? 'azul' : 'cinza'}`;
+    bAbaD.className = `botao mini ${nova === 'decoracao' ? 'azul' : 'cinza'}`;
     desenharLoja();
   };
   bAbaS.onclick = () => trocarAba('sementes');
   bAbaA.onclick = () => trocarAba('animais');
+  bAbaD.onclick = () => trocarAba('decoracao');
+
+  const desenharDecoracoes = () => {
+    const e = jogo.estado;
+    painelLoja.lista.replaceChildren(
+      ...DECORACOES.map((d) => {
+        const guardadas = e.guardadas?.[d.id] ?? 0;
+        const livre = e.nivel >= d.nivel || guardadas > 0;
+        const item = el('div', `item${livre ? '' : ' trava'}`);
+        const bola = el('div', 'bolinha');
+        bola.style.background = `#${(COR_DECORACAO[d.id] ?? 0xcccccc).toString(16).padStart(6, '0')}`;
+        const preco = `${d.preco} ${d.moeda === 'moedas' ? '🪙' : '💎'}`;
+        const info = el('div', 'info', `<div class="nome">${d.nome}</div><div class="det">${guardadas ? `${guardadas} guardada(s) · grátis` : preco}</div>`);
+        const b = el('button', 'botao mini', guardadas ? `${T.colocar} (${guardadas})` : livre ? preco : `🔒 ${T.bloqueado(d.nivel)}`);
+        b.disabled = !livre;
+        b.onclick = () => {
+          som.clique();
+          jogo.cancelarModo();
+          jogo.decorando = d.id;
+          avisar(T.toqueParaColocar(d.nome));
+          fechar(painelLoja);
+        };
+        item.append(bola, info, b);
+        return item;
+      }),
+    );
+  };
 
   const desenharAnimais = () => {
     const e = jogo.estado;
@@ -123,6 +154,7 @@ export function montarInterface(): void {
 
   const desenharLoja = () => {
     if (aba === 'animais') return desenharAnimais();
+    if (aba === 'decoracao') return desenharDecoracoes();
     const e = jogo.estado;
     painelLoja.lista.replaceChildren(
       ...CULTURAS.map((c) => {
@@ -241,6 +273,16 @@ export function montarInterface(): void {
   bLoja.onclick = () => abrir(painelLoja, desenharLoja);
   bSemente.onclick = bLoja.onclick;
   bCeleiro.onclick = () => abrir(painelCeleiro, desenharCeleiro);
+  bGuardar.onclick = () => {
+    som.clique();
+    const ativo = jogo.decorando === 'guardar';
+    jogo.cancelarModo();
+    if (!ativo) {
+      jogo.decorando = 'guardar';
+      avisar(T.toqueParaGuardar);
+    }
+    bGuardar.classList.toggle('alerta', !ativo);
+  };
   bConq.onclick = () => abrir(painelConq, desenharConquistas);
   bMissoes.onclick = () => abrir(painelMissoes, desenharMissoes);
   bSom.onclick = () => {

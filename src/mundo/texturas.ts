@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { TILE_A, TILE_L } from '../config';
-import { ANIMAIS, CULTURAS } from '../dados';
+import { ANIMAIS, CULTURAS, DECORACOES } from '../dados';
 
 // Arte PLACEHOLDER gerada por código (sem arquivos). O Artista 2D substitui por atlas
 // real mantendo as mesmas chaves de textura e o canvas de 128×128 com âncora (0.5, 0.75).
@@ -55,6 +55,9 @@ export function gerarTexturas(cena: Phaser.Scene): void {
 
   for (const a of ANIMAIS) {
     gerar(cena, `animal_${a.id}`, TILE_L, TILE_L, (g) => desenharAnimal(g, COR_ANIMAL[a.id] ?? 0xffffff));
+  }
+  for (const d of DECORACOES) {
+    gerar(cena, `deco_${d.id}`, TILE_L, TILE_L, (g) => desenharDecoracao(g, COR_DECORACAO[d.id] ?? 0xcccccc, d.moeda === 'diamantes'));
   }
   gerar(cena, 'bolha', 56, 56, (g) => {
     g.fillStyle(0xffffff, 1).fillCircle(28, 28, 24).lineStyle(4, CONTORNO, 1).strokeCircle(28, 28, 24);
@@ -115,4 +118,28 @@ function desenharAnimal(g: Phaser.GameObjects.Graphics, cor: number): void {
   g.fillCircle(cx + 18, cy - 36, 13).strokeCircle(cx + 18, cy - 36, 13);
   g.fillStyle(CONTORNO, 1).fillCircle(cx + 22, cy - 38, 2.5);
   g.fillStyle(0xf59a23, 1).fillTriangle(cx + 30, cy - 36, cx + 38, cy - 33, cx + 30, cy - 30);
+}
+
+export const COR_DECORACAO: Record<string, number> = {
+  cerca: 0xd9a066,
+  flores: 0xe0386b,
+  caminho: 0xa7a9ac,
+  espantalho: 0xf59a23,
+  banco: 0x8f5a2e,
+  poco: 0x6e6e7a,
+  moinho: 0xd9483b,
+  fonte: 0x4fb3e8,
+  coreto: 0x8e5bd9,
+  balao: 0xf7c531,
+};
+
+// Decoração placeholder: bloco com topo mais claro; as premium (diamantes) ganham uma estrela.
+function desenharDecoracao(g: Phaser.GameObjects.Graphics, cor: number, premium: boolean): void {
+  const cx = 64;
+  const cy = 96;
+  g.fillStyle(0x000000, 0.2).fillEllipse(cx, cy + 2, 56, 20);
+  g.lineStyle(3, CONTORNO, 1);
+  g.fillStyle(cor, 1).fillRect(cx - 20, cy - 34, 40, 34).strokeRect(cx - 20, cy - 34, 40, 34);
+  g.fillStyle(0xffffff, 0.35).fillRect(cx - 20, cy - 34, 40, 10);
+  if (premium) g.fillStyle(0xffffff, 1).fillCircle(cx, cy - 16, 6).lineStyle(2, CONTORNO, 1).strokeCircle(cx, cy - 16, 6);
 }
