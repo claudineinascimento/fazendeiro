@@ -1,5 +1,5 @@
-import { CUSTO_ARAR, LIMITE_ANIMAIS, XP_ARAR, animalPorId, culturaPorId, itemVendavel } from '../dados';
-import { chave, dentroDaArea, type EstadoJogo } from './estado';
+import { CUSTO_ARAR, LIMITE_ANIMAIS, XP_ARAR, animalPorId, culturaPorId, decoracaoPorId, itemVendavel } from '../dados';
+import { chave, dentroDaArea, ocupado, type EstadoJogo } from './estado';
 import { ganharXp } from './economia';
 import { progresso, progressoCiclo } from './tempo';
 
@@ -12,6 +12,8 @@ export type Evento =
   | { tipo: 'colheu'; x: number; y: number; cultura: string; xp: number }
   | { tipo: 'comprouAnimal'; x: number; y: number; animal: string; custo: number }
   | { tipo: 'coletou'; x: number; y: number; produto: string; xp: number }
+  | { tipo: 'colocouDecoracao'; x: number; y: number; decoracao: string; xp: number }
+  | { tipo: 'guardouDecoracao'; x: number; y: number }
   | { tipo: 'vendeu'; moedas: number }
   | { tipo: 'nivel'; nivel: number; moedas: number };
 
@@ -29,7 +31,7 @@ function concluir(estado: EstadoJogo, eventos: Evento[], xp: number): Resultado 
 
 export function arar(antigo: EstadoJogo, x: number, y: number): Resultado {
   if (!dentroDaArea(antigo, x, y)) return erro('Esse terreno ainda está bloqueado.');
-  if (antigo.animais[chave(x, y)]) return erro('Tem um animal aqui.');
+  if (antigo.animais[chave(x, y)] || antigo.decoracoes?.[chave(x, y)]) return erro('Esse espaço está ocupado.');
   if (antigo.canteiros[chave(x, y)]) return erro('Esse canteiro já está arado.');
   if (antigo.moedas < CUSTO_ARAR) return erro('Moedas insuficientes para arar.');
   const estado = structuredClone(antigo);
@@ -98,7 +100,7 @@ export function comprarAnimal(antigo: EstadoJogo, x: number, y: number, tipo: st
   const animal = animalPorId(tipo);
   if (!animal) return erro('Animal desconhecido.');
   if (!dentroDaArea(antigo, x, y)) return erro('Esse terreno ainda está bloqueado.');
-  if (antigo.canteiros[chave(x, y)] || antigo.animais[chave(x, y)]) return erro('Esse espaço está ocupado.');
+  if (ocupado(antigo, x, y)) return erro('Esse espaço está ocupado.');
   if (antigo.nivel < animal.nivelDesbloqueio) return erro(`Disponível no nível ${animal.nivelDesbloqueio}.`);
   if (Object.keys(antigo.animais).length >= LIMITE_ANIMAIS) return erro(`Limite de ${LIMITE_ANIMAIS} animais.`);
   if (antigo.moedas < animal.custo) return erro('Moedas insuficientes.');
@@ -118,6 +120,38 @@ export function coletar(antigo: EstadoJogo, x: number, y: number, agoraMs: numbe
   estado.animais[chave(x, y)] = { ...a, cicloDesde: agoraMs };
   estado.celeiro[animal.produtoId] = (estado.celeiro[animal.produtoId] ?? 0) + 1;
   return concluir(estado, [{ tipo: 'coletou', x, y, produto: animal.produtoId, xp: animal.xpColeta }], animal.xpColeta);
+}
+
+/** Coloca uma decoração: usa uma do inventário ou compra (moedas ou diamantes). XP só na compra. */
+export function colocarDecoracao(antigo: EstadoJogo, x: number, y: number, id: string): Resultado {
+  const d = decoracaoPorId(id);
+  if (!d) return erro('Decoração desconhecida.');
+  if (!dentroDaArea(antigo, x, y)) return erro('Esse terreno ainda está bloqueado.');
+  if (ocupado(antigo, x, y)) return erro('Esse espaço está ocupado.');
+  const estado = structuredClone(antigo);
+  const guardada = estado.guardadas?.[id] ?? 0;
+  let xp = 0;
+  if (guardada > 0) {
+    estado.guardadas![id] = guardada - 1;
+    if (estado.guardadas![id] === 0) delete estado.guardadas![id];
+  } else {
+    if (antigo.nivel < d.nivel) return erro(`Disponível no nível ${d.nivel}.`);
+    if (antigo[d.moeda] < d.preco) return erro(d.moeda === 'moedas' ? 'Moedas insuficientes.' : 'Diamantes insuficientes.');
+    estado[d.moeda] -= d.preco;
+    xp = 1; // GDD: 1 XP ao colocar pela primeira vez cada unidade
+  }
+  estado.decoracoes = { ...(estado.decoracoes ?? {}), [chave(x, y)]: id };
+  return concluir(estado, [{ tipo: 'colocouDecoracao', x, y, decoracao: id, xp }], xp);
+}
+
+/** Guarda a decoração no inventário (para recolocar depois sem pagar de novo). */
+export function guardarDecoracao(antigo: EstadoJogo, x: number, y: number): Resultado {
+  const id = antigo.decoracoes?.[chave(x, y)];
+  if (!id) return erro('Não há decoração aqui.');
+  const estado = structuredClone(antigo);
+  delete estado.decoracoes![chave(x, y)];
+  estado.guardadas = { ...(estado.guardadas ?? {}), [id]: (estado.guardadas?.[id] ?? 0) + 1 };
+  return { ok: true, estado, eventos: [{ tipo: 'guardouDecoracao', x, y }] };
 }
 
 /** Ferramenta inteligente (GDD seção 2): arar se vazio, plantar se arado, colher se pronto. */

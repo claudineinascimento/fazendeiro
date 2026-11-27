@@ -11,6 +11,14 @@ export interface Cultura {
   nivelDesbloqueio: number;
 }
 
+export interface Decoracao {
+  id: string;
+  nome: string;
+  preco: number;
+  moeda: 'moedas' | 'diamantes';
+  nivel: number;
+}
+
 export interface Animal {
   id: string;
   nome: string;

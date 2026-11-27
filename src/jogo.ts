@@ -38,8 +38,18 @@ class Jogo {
 
   /** Animal escolhido na loja, aguardando o toque no terreno (só interface, não é salvo). */
   colocando: string | null = null;
+  /** Decoração escolhida para colocar, ou 'guardar' para o modo de guardar. */
+  decorando: string | null = null;
 
   tocar = (x: number, y: number): boolean => {
+    if (this.decorando) {
+      const modo = this.decorando;
+      if (modo === 'guardar') return this.executar((e) => acoes.guardarDecoracao(e, x, y));
+      const ok = this.executar((e) => acoes.colocarDecoracao(e, x, y, modo));
+      // continua no modo enquanto houver decoração para colocar (inventário)
+      if (ok && !((this.estado.guardadas?.[modo] ?? 0) > 0)) this.decorando = null;
+      return ok;
+    }
     if (this.colocando) {
       const tipo = this.colocando;
       const ok = this.executar((e, t) => acoes.comprarAnimal(e, x, y, tipo, t));
@@ -88,6 +98,12 @@ class Jogo {
     this.estado = { ...this.estado, config: { ...this.estado.config, som: !this.estado.config.som } };
     this.agendarSave();
     this.ouvintes.forEach((f) => f(this.estado, []));
+  }
+
+  /** Sai de qualquer modo de colocar/guardar. */
+  cancelarModo(): void {
+    this.colocando = null;
+    this.decorando = null;
   }
 
   novoJogo(): void {
